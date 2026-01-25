@@ -1,0 +1,455 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* Base styles */
+@layer base {
+  html {
+    font-family: 'Inter', sans-serif;
+    /* Mobile viewport optimizations */
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    /* Prevent zoom on double-tap */
+    touch-action: manipulation;
+    /* Support safe area insets for notched devices */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    /* Dynamic viewport height support for mobile browsers */
+    height: 100%;
+    height: 100dvh;
+  }
+
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* iOS Safari momentum scrolling */
+    -webkit-overflow-scrolling: touch;
+    /* Prevent overscroll bounce on mobile */
+    overscroll-behavior: none;
+    /* Better touch scrolling */
+    scroll-behavior: smooth;
+    /* Prevent text selection on mobile gestures */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    /* Dynamic viewport height for mobile browsers */
+    min-height: 100%;
+    min-height: 100dvh;
+  }
+
+  /* Re-enable text selection for content areas */
+  p, span, h1, h2, h3, h4, h5, h6, div[contenteditable], input, textarea,
+  .markdown-content, .content-body, .streaming-content,
+  .markdown-content *, .content-body *, .streaming-content * {
+    -webkit-user-select: text;
+    -khtml-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+  }
+}
+
+/* Component styles */
+@layer components {
+  /* Scroll anchoring for chat messages */
+  .chat-container {
+    overflow-anchor: auto;
+  }
+  
+  .chat-message {
+    overflow-anchor: auto;
+  }
+  
+  /* Prevent scroll anchoring interference during animations */
+  .no-scroll-anchor {
+    overflow-anchor: none;
+  }
+  
+  /* Loading States */
+  .loading-skeleton {
+    @apply animate-pulse bg-gray-200 rounded;
+  }
+  
+  .loading-spinner {
+    @apply animate-spin rounded-full border-4 border-gray-200 border-t-blue-600;
+  }
+
+  /* Mobile-optimized buttons */
+  .mobile-button {
+    @apply min-h-11 min-w-11 touch-manipulation no-tap-highlight;
+    /* Ensure minimum 44px touch target */
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .mobile-button-large {
+    @apply min-h-12 min-w-12 touch-manipulation no-tap-highlight;
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  /* Mobile drag handles */
+  .drag-handle {
+    @apply flex items-center justify-center py-2 cursor-grab active:cursor-grabbing touch-manipulation;
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-drag: none;
+  }
+
+  .drag-indicator {
+    @apply w-10 h-1 bg-gray-300 dark:bg-gray-600 rounded-full;
+  }
+
+  /* Mobile modal optimizations */
+  .mobile-modal {
+    @apply fixed inset-0 flex items-end sm:items-center justify-center p-0 sm:p-4;
+    z-index: 10002; /* Higher than chat UI's highest z-index (10001) */
+  }
+
+  .mobile-modal-content {
+    @apply bg-white dark:bg-gray-800 w-full sm:max-w-lg sm:rounded-lg rounded-t-xl sm:rounded-none overflow-hidden;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom);
+    border-top-left-radius: 1.5rem;
+    border-top-right-radius: 1.5rem;
+  }
+
+  /* Mobile auth page optimizations */
+  .mobile-auth-container {
+    /* Use dynamic viewport units to handle mobile URL bar changes */
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for browsers that support it */
+    min-height: 100vh;
+    min-height: 100dvh;
+    /* Prevent any scrolling or bouncing */
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: auto; /* Disable momentum scrolling */
+    /* Ensure full coverage */
+    width: 100vw;
+    position: relative;
+  }
+
+  /* Mobile chat panel */
+  .mobile-chat-panel {
+    @apply shadow-2xl border-t border-gray-200 dark:border-gray-700;
+    will-change: height;
+    contain: layout;
+  }
+
+  /* Mobile dragging state */
+  .mobile-dragging {
+    cursor: grabbing !important;
+    user-select: none !important;
+    -webkit-user-select: none !important;
+  }
+
+  /* Ensure text selection works in content areas even during mobile interactions */
+  .mobile-dragging .markdown-content,
+  .mobile-dragging .content-body,
+  .mobile-dragging .streaming-content,
+  .mobile-dragging .markdown-content *,
+  .mobile-dragging .content-body *,
+  .mobile-dragging .streaming-content * {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+  }
+
+  /* Mobile scroll containers */
+  .mobile-scroll-container {
+    @apply mobile-scroll;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    overflow-y: auto;
+  }
+
+  /* Mobile-optimized inputs */
+  .mobile-input {
+    @apply min-h-11 px-4 py-3 text-base touch-manipulation;
+    /* Prevent zoom on iOS when input is focused */
+    font-size: 16px;
+  }
+
+  /* Ensure default input/textarea/select font-size >=16px on small screens */
+  @media (max-width: 767px) {
+    input, textarea, select {
+      font-size: 16px;
+    }
+  }
+
+  /* Mobile bottom navigation */
+  .mobile-bottom-nav {
+    @apply safe-bottom;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    /* border-top: 1px solid rgba(0, 0, 0, 0.1); */
+  }
+
+  /* Mobile image optimizations */
+  .mobile-image {
+    @apply object-cover;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+
+  /* Mobile skeleton loading */
+  .mobile-skeleton {
+    @apply loading-skeleton;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+  }
+
+  @keyframes loading {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  /* Mobile card optimizations */
+  .mobile-card {
+    @apply touch-feedback;
+  }
+
+  /* Mobile list item */
+  .mobile-list-item {
+    @apply py-4 px-4 border-b border-gray-200 dark:border-gray-700 last:border-b-0 touch-feedback;
+    min-height: 60px;
+  }
+
+  /* Mobile overlay */
+  .mobile-overlay {
+    @apply fixed inset-0 bg-black bg-opacity-50;
+    z-index: 10002; /* Higher than chat UI's highest z-index (10001) */
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+}
+
+/* Utility classes */
+@layer utilities {
+  .text-shadow {
+    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.8);
+  }
+  
+  /* Hide scrollbar while keeping scroll functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar { 
+    display: none;  /* Safari and Chrome */
+  }
+
+  /* Mobile-optimized scrollbars */
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  
+  /* Hide scrollbars on mobile only */
+  @media (max-width: 767px) {
+    .mobile-scroll {
+      scrollbar-width: none; /* Firefox */
+      -ms-overflow-style: none; /* IE/Edge */
+    }
+    
+    .mobile-scroll::-webkit-scrollbar {
+      display: none; /* Chrome/Safari/WebKit */
+    }
+  }
+
+  /* Native-style thin scrollbars for desktop */
+  @media (min-width: 768px) {
+    .mobile-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .mobile-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    .mobile-scroll::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 3px;
+    }
+    
+    .mobile-scroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 0, 0, 0.3);
+    }
+    
+    .dark .mobile-scroll::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    
+    .dark .mobile-scroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  }
+  
+  .text-shadow-light {
+    text-shadow: 1px 1px 0px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Mobile-specific utilities */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  
+  .touch-pan-x {
+    touch-action: pan-x;
+  }
+  
+  .touch-pan-y {
+    touch-action: pan-y;
+  }
+  
+  .touch-none {
+    touch-action: none;
+  }
+
+  /* Safe area utilities for notched devices */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Mobile scroll optimization */
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* Mobile tap highlight removal */
+  .no-tap-highlight {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Mobile touch feedback */
+.touch-feedback {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.1s ease, opacity 0.1s ease;
+}
+
+.touch-feedback:active {
+  transform: scale(0.97);
+  opacity: 0.8;
+}
+
+/* Material Design Ripple Effect */
+.ripple-effect {
+  position: relative;
+  overflow: hidden;
+  transform: translate3d(0, 0, 0);
+}
+
+.ripple-effect:before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.15); /* Dark ripple for light mode */
+  transform: translate(-50%, -50%);
+  transition: width 0.3s ease-out, height 0.3s ease-out, opacity 0.3s ease-out;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ripple-effect:active:before {
+  width: 300px;
+  height: 300px;
+  opacity: 1;
+  transition: width 0.1s ease-out, height 0.1s ease-out, opacity 0.1s ease-out;
+}
+
+/* Dark mode ripple */
+.dark .ripple-effect:before {
+  background: rgba(255, 255, 255, 0.25); /* Light ripple for dark mode */
+}
+
+/* Alternative ripple for light backgrounds */
+.ripple-effect-dark:before {
+  background: rgba(0, 0, 0, 0.12); /* Slightly darker for light mode */
+}
+
+.dark .ripple-effect-dark:before {
+  background: rgba(255, 255, 255, 0.2); /* Light ripple for dark mode */
+}
+
+  /* Virtual keyboard safe zone */
+  .keyboard-safe {
+    padding-bottom: env(keyboard-inset-height, 0px);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100 rounded;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-400 rounded hover:bg-gray-500;
+}
+
+/* Dark mode support (future feature) */
+@media (prefers-color-scheme: dark) {
+  /* Dark mode styles can be added here */
+}
+
+/* Reset margins and padding for diff content to prevent spacing issues */
+.diff-content-reset * {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Override ProseMirror selected node outline for diff sections - more aggressive */
+.ProseMirror .ProseMirror-selectednode {
+  outline: none !important;
+}
+
+.ProseMirror [data-section-id] {
+  outline: none !important;
+}
+
+.ProseMirror [data-section-id].ProseMirror-selectednode {
+  outline: none !important;
+} 
+
+.prose-sm :where(p):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.prose :where(strong):not(:where([class~="not-prose"], [class~="not-prose"] *)){
+  color: unset
+}
