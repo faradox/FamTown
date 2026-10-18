@@ -250,6 +250,7 @@ const TownsquareCanvas = () => {
 
   // Touch gestures
   const handleTouchStart = (e) => {
+    (e.evt?.preventDefault?.() || e.preventDefault?.());
     const touchArray = Array.from((e.evt?.touches) || e.touches || []);
     setTouches(touchArray);
 
@@ -354,6 +355,8 @@ const TownsquareCanvas = () => {
       style={{
         ...backgroundStyle,
         cursor: isPanning ? 'grabbing' : 'grab',
+        touchAction: 'none',
+        overscrollBehavior: 'none',
       }}
     >
       <Stage
@@ -384,6 +387,7 @@ const TownsquareCanvas = () => {
           position: 'absolute',
           transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
           transformOrigin: '0 0',
+          touchAction: 'none',
         }}
       >
         {items.map((item) => {

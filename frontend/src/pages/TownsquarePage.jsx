@@ -54,7 +54,10 @@ const TownsquarePage = () => {
   ];
 
   return (
-    <div className="fixed inset-0 bg-gray-100 dark:bg-gray-900 overflow-hidden">
+    <div
+      className="fixed inset-0 bg-gray-100 dark:bg-gray-900 overflow-hidden"
+      style={{ overscrollBehavior: 'none' }}
+    >
       <TownsquareCanvas />
 
       <FloatingMenu items={menuItems} />

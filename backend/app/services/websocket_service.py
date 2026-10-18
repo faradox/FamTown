@@ -16,14 +16,15 @@ class WebSocketManager:
     def __init__(self):
         self.active_connections: Set[WebSocket] = set()
     
-    async def connect(self, websocket: WebSocket):
-        """Accept and register a new WebSocket connection"""
-        await websocket.accept()
+    def register(self, websocket: WebSocket):
+        """Register an accepted and authenticated WebSocket connection"""
         self.active_connections.add(websocket)
         logger.info(f"WebSocket connected. Total connections: {len(self.active_connections)}")
     
     def disconnect(self, websocket: WebSocket):
         """Remove a WebSocket connection"""
+        if websocket not in self.active_connections:
+            return
         self.active_connections.discard(websocket)
         logger.info(f"WebSocket disconnected. Total connections: {len(self.active_connections)}")
     
@@ -40,7 +41,8 @@ class WebSocketManager:
         message_str = json.dumps(message)
         disconnected = set()
         
-        for connection in self.active_connections:
+        # Iterate over a snapshot: connections may (dis)connect while we await sends
+        for connection in list(self.active_connections):
             try:
                 await connection.send_text(message_str)
             except Exception as e:

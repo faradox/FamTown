@@ -1,4 +1,4 @@
-.PHONY: all init setup setup-dev build build-dev build-frontend build-backend logs logs-frontend logs-backend shell shell-frontend shell-backend run run-dev stop clean help
+.PHONY: all init migrate-uploads setup setup-dev build build-dev build-frontend build-backend logs logs-frontend logs-backend shell shell-frontend shell-backend run run-dev stop clean help
 
 all: help
 
@@ -8,13 +8,26 @@ gid := $(shell id -g)
 # Project configuration
 PROJECT_NAME := famtown
 DOCKER_NETWORK_NAME ?= breathnet
+DATA_DIR ?= $(HOME)/breathdance-data/famtown
+UPLOADS_DIR ?= $(DATA_DIR)/uploads
+export FAMTOWN_UPLOADS_DIR ?= $(UPLOADS_DIR)
 
 # Setup targets
 init:
 	@echo "Initializing FamTown project..."
 	@echo "Ensuring Docker network exists: $(DOCKER_NETWORK_NAME)"
 	@docker network inspect $(DOCKER_NETWORK_NAME) >/dev/null 2>&1 || docker network create $(DOCKER_NETWORK_NAME)
+	@echo "Ensuring upload storage exists: $(FAMTOWN_UPLOADS_DIR)"
+	@mkdir -p "$(FAMTOWN_UPLOADS_DIR)"
+	@$(MAKE) migrate-uploads
 	@echo "Project initialized. Set environment variables as needed."
+
+migrate-uploads:
+	@if [ -d "./backend/uploads" ] && [ "$$(ls -A ./backend/uploads 2>/dev/null)" ]; then \
+		echo "Copying existing uploads to $(FAMTOWN_UPLOADS_DIR)..."; \
+		mkdir -p "$(FAMTOWN_UPLOADS_DIR)"; \
+		cp -a ./backend/uploads/. "$(FAMTOWN_UPLOADS_DIR)/"; \
+	fi
 
 setup: init build
 	@echo "FamTown setup complete!"
@@ -24,10 +37,12 @@ setup-dev: init build-dev
 
 # Build targets
 build-dev:
+	$(MAKE) init
 	@echo "Building development images..."
 	uid=$(uid) gid=$(gid) docker compose -p $(PROJECT_NAME) --profile dev build
 
 build:
+	$(MAKE) init
 	@echo "Building production images..."
 	uid=$(uid) gid=$(gid) docker compose -p $(PROJECT_NAME) --profile prod build
 
@@ -40,9 +55,7 @@ build-backend:
 	uid=$(uid) gid=$(gid) docker compose -p $(PROJECT_NAME) build backend
 
 # Logging targets
-logs:
-	logs-frontend
-	logs-backend
+logs: logs-frontend logs-backend
 
 logs-frontend:
 	@docker logs famtown-frontend
@@ -73,6 +86,7 @@ shell-frontend:
 # Run targets
 run-dev:
 	@echo "Starting FamTown in development mode..."
+	$(MAKE) init
 	$(MAKE) stop
 	@if [ -z "$$(docker images -q famtown-backend-dev)" ]; then \
         echo "Development images not found. Building..."; \
@@ -82,6 +96,7 @@ run-dev:
 
 run:
 	@echo "Starting FamTown in production mode..."
+	$(MAKE) init
 	$(MAKE) stop
 	@if [ -z "$$(docker images -q famtown-backend)" ]; then \
         echo "Production images not found. Building..."; \
@@ -91,6 +106,7 @@ run:
 
 run-detached:
 	@echo "Starting FamTown in production mode (detached)..."
+	$(MAKE) init
 	$(MAKE) stop
 	docker compose -p $(PROJECT_NAME) --profile prod up -d
 
@@ -113,7 +129,6 @@ clean:
 	@echo "Cleaning up FamTown containers and images..."
 	$(MAKE) stop
 	docker compose -p $(PROJECT_NAME) down --volumes --remove-orphans
-	docker system prune -f
 	@echo "Cleanup complete"
 
 # Database targets
@@ -123,10 +138,10 @@ db-migrate:
 
 db-reset:
 	@echo "Resetting database (WARNING: This will delete all data!)..."
-	@read -p "Are you sure? Type 'yes' to continue: " confirm && [ "$$confirm" = "yes" ] && \
-	docker compose -p $(PROJECT_NAME) down postgres && \
-	docker volume rm $(PROJECT_NAME)_postgres-data 2>/dev/null || true && \
-	docker compose -p $(PROJECT_NAME) up -d postgres
+	@read -p "Are you sure? Type 'yes' to continue: " confirm && [ "$$confirm" = "yes" ] || { echo "Aborted"; exit 1; }
+	docker compose -p $(PROJECT_NAME) --profile dev rm -s -f postgres
+	docker volume rm $(PROJECT_NAME)_postgres-data-famtown 2>/dev/null || true
+	docker compose -p $(PROJECT_NAME) --profile dev up -d postgres
 
 update:
 	@echo "Updating FamTown..."

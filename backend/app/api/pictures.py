@@ -13,6 +13,7 @@ from database import db_manager, User, Picture
 from app.services.auth_service import get_current_user
 from app.services.file_service import file_service
 from app.services.websocket_service import ws_manager
+from app.services.placement_service import remove_placements, broadcast_placement_removals
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/pictures", tags=["pictures"])
@@ -188,8 +189,10 @@ async def delete_picture(picture_id: str, current_user: User = Depends(get_curre
         file_service.delete_file(picture.path)
         
         # Delete from database
+        removed = await remove_placements(session, "picture", picture_id)
         await session.execute(delete(Picture).where(Picture.id == picture_id))
         await session.commit()
+        await broadcast_placement_removals(removed)
         
         # Broadcast to WebSocket clients
         await ws_manager.send_object_deleted("picture", picture_id)

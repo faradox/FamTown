@@ -78,6 +78,10 @@ const TownsquareObject = ({ item, objectData, isVisible = true }) => {
   };
 
   const handleTouchStart = (e) => {
+    const touchCount = e.touches?.length || 0;
+    if (touchCount > 1) {
+      return;
+    }
     if (e.target.classList.contains('resize-handle') ||
         e.target.classList.contains('rotate-handle') ||
         e.target.classList.contains('crop-handle') ||
@@ -85,6 +89,7 @@ const TownsquareObject = ({ item, objectData, isVisible = true }) => {
       return;
     }
 
+    e.preventDefault();
     e.stopPropagation();
     const touch = e.touches[0];
     setIsDragging(true);
@@ -103,6 +108,9 @@ const TownsquareObject = ({ item, objectData, isVisible = true }) => {
 
   const handleTouchMove = (e) => {
     if (!isDragging) return;
+    if ((e.touches?.length || 0) > 1) {
+      return;
+    }
 
     e.preventDefault();
     e.stopPropagation();
@@ -703,6 +711,7 @@ const TownsquareObject = ({ item, objectData, isVisible = true }) => {
         height: item.height,
         zIndex: item.zIndex || 0,
         transform: `rotate(${item.rotation || 0}deg)`,
+        touchAction: 'none',
       }}
       className={`select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} ${
         isSelected ? 'ring-2 ring-blue-500' : ''

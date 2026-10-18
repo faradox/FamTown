@@ -43,6 +43,10 @@ class Settings:
     # Upload Configuration
     UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "uploads")
 
+    # Uvicorn workers. Keep at 1: WebSocket connections live in-process, so with
+    # more workers a broadcast only reaches clients of the worker that sent it.
+    WORKERS: int = int(os.getenv("WORKERS", "1"))
+
     
     # JWT configuration with validation
     def _validate_jwt_secret(self) -> str:
@@ -69,17 +73,19 @@ class Settings:
             "secret",
             "jwt-secret",
             "default-secret",
-            "change-me"
+            "change-me",
+            # Public fallback from docker-compose.yml
+            "dev-secret-key-for-development-super-long-enough-for-security",
         ]
         
         if jwt_secret.lower() in insecure_defaults:
             if not self.DEBUG:  # Fail hard in production
                 raise ValueError(
-                    f"Insecure JWT secret '{jwt_secret}' detected in production. "
+                    "Insecure (publicly known) JWT secret detected in production. "
                     "Use a cryptographically secure secret."
                 )
             else:
-                logger.warning(f"Insecure JWT secret detected: '{jwt_secret}'. Use a strong secret in production!")
+                logger.warning("Insecure JWT secret detected. Use a strong secret in production!")
         
         # Validate minimum length
         if len(jwt_secret) < 32:

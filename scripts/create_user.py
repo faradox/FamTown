@@ -9,10 +9,10 @@ import os
 import asyncio
 import uuid
 
-# Add parent directory to path to import backend modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Add backend directory to path to import backend modules
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
 
-from app.database import db_manager, User
+from database import db_manager, User
 from app.services.auth_service import hash_password
 from sqlalchemy import select
 

@@ -36,7 +36,9 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
+    // A 401 from the login call is a wrong password, not an expired session
+    const isLoginRequest = error.config?.url?.endsWith('/api/auth/login');
+    if (error.response?.status === 401 && !isLoginRequest) {
       await authStorage.removeToken();
       window.location.href = '/login';
     }

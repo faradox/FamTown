@@ -16,7 +16,9 @@ const ProfileObject = ({ item, objectData, isEditable }) => {
   const [isResizing, setIsResizing] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [pendingUpdate, setPendingUpdate] = useState(null);
+  // A ref, not state: document listeners are bound once per gesture and would
+  // otherwise read the value from when the gesture started (null)
+  const pendingUpdateRef = useRef(null);
   const elementRef = useRef(null);
 
   const { updateItem, bringToFront, selectedItemId, selectItem, removeItem, zoom, currentProfileUserId } = useProfileStore();
@@ -89,16 +91,17 @@ const ProfileObject = ({ item, objectData, isEditable }) => {
     newY = Math.round(newY);
 
     updateItem(item.id, { x: newX, y: newY });
-    setPendingUpdate({ x: newX, y: newY });
+    pendingUpdateRef.current = { x: newX, y: newY };
   };
 
   const handleTouchEnd = async () => {
     if (isDragging) {
       setIsDragging(false);
-      if (pendingUpdate) {
+      const update = pendingUpdateRef.current;
+      pendingUpdateRef.current = null;
+      if (update) {
         try {
-          await profileAPI.updateItem(currentProfileUserId, item.id, pendingUpdate);
-          setPendingUpdate(null);
+          await profileAPI.updateItem(currentProfileUserId, item.id, update);
         } catch (error) {
           console.error('Error updating item position:', error);
         }
@@ -121,16 +124,17 @@ const ProfileObject = ({ item, objectData, isEditable }) => {
     newY = Math.round(newY);
 
     updateItem(item.id, { x: newX, y: newY });
-    setPendingUpdate({ x: newX, y: newY });
+    pendingUpdateRef.current = { x: newX, y: newY };
   };
 
   const handleMouseUp = async () => {
     if (isDragging) {
       setIsDragging(false);
-      if (pendingUpdate) {
+      const update = pendingUpdateRef.current;
+      pendingUpdateRef.current = null;
+      if (update) {
         try {
-          await profileAPI.updateItem(currentProfileUserId, item.id, pendingUpdate);
-          setPendingUpdate(null);
+          await profileAPI.updateItem(currentProfileUserId, item.id, update);
         } catch (error) {
           console.error('Error updating item position:', error);
         }
@@ -170,16 +174,17 @@ const ProfileObject = ({ item, objectData, isEditable }) => {
     const newHeight = Math.round(Math.max(100, (touch.clientY - parentRect.top) / zoom - item.y));
 
     updateItem(item.id, { width: newWidth, height: newHeight });
-    setPendingUpdate({ width: newWidth, height: newHeight });
+    pendingUpdateRef.current = { width: newWidth, height: newHeight };
   };
 
   const handleResizeTouchEnd = async () => {
     if (isResizing) {
       setIsResizing(false);
-      if (pendingUpdate) {
+      const update = pendingUpdateRef.current;
+      pendingUpdateRef.current = null;
+      if (update) {
         try {
-          await profileAPI.updateItem(currentProfileUserId, item.id, pendingUpdate);
-          setPendingUpdate(null);
+          await profileAPI.updateItem(currentProfileUserId, item.id, update);
         } catch (error) {
           console.error('Error updating item size:', error);
         }
@@ -198,16 +203,17 @@ const ProfileObject = ({ item, objectData, isEditable }) => {
     const newHeight = Math.round(Math.max(100, (e.clientY - parentRect.top) / zoom - item.y));
 
     updateItem(item.id, { width: newWidth, height: newHeight });
-    setPendingUpdate({ width: newWidth, height: newHeight });
+    pendingUpdateRef.current = { width: newWidth, height: newHeight };
   };
 
   const handleResizeMouseUp = async () => {
     if (isResizing) {
       setIsResizing(false);
-      if (pendingUpdate) {
+      const update = pendingUpdateRef.current;
+      pendingUpdateRef.current = null;
+      if (update) {
         try {
-          await profileAPI.updateItem(currentProfileUserId, item.id, pendingUpdate);
-          setPendingUpdate(null);
+          await profileAPI.updateItem(currentProfileUserId, item.id, update);
         } catch (error) {
           console.error('Error updating item size:', error);
         }
@@ -247,16 +253,17 @@ const ProfileObject = ({ item, objectData, isEditable }) => {
     const degrees = (angle * 180) / Math.PI + 90; // Add 90 to adjust for top-center reference
 
     updateItem(item.id, { rotation: Math.round(degrees) });
-    setPendingUpdate({ rotation: Math.round(degrees) });
+    pendingUpdateRef.current = { rotation: Math.round(degrees) };
   };
 
   const handleRotateTouchEnd = async () => {
     if (isRotating) {
       setIsRotating(false);
-      if (pendingUpdate) {
+      const update = pendingUpdateRef.current;
+      pendingUpdateRef.current = null;
+      if (update) {
         try {
-          await profileAPI.updateItem(currentProfileUserId, item.id, pendingUpdate);
-          setPendingUpdate(null);
+          await profileAPI.updateItem(currentProfileUserId, item.id, update);
         } catch (error) {
           console.error('Error updating item rotation:', error);
         }
@@ -275,16 +282,17 @@ const ProfileObject = ({ item, objectData, isEditable }) => {
     const degrees = (angle * 180) / Math.PI + 90; // Add 90 to adjust for top-center reference
 
     updateItem(item.id, { rotation: Math.round(degrees) });
-    setPendingUpdate({ rotation: Math.round(degrees) });
+    pendingUpdateRef.current = { rotation: Math.round(degrees) };
   };
 
   const handleRotateMouseUp = async () => {
     if (isRotating) {
       setIsRotating(false);
-      if (pendingUpdate) {
+      const update = pendingUpdateRef.current;
+      pendingUpdateRef.current = null;
+      if (update) {
         try {
-          await profileAPI.updateItem(currentProfileUserId, item.id, pendingUpdate);
-          setPendingUpdate(null);
+          await profileAPI.updateItem(currentProfileUserId, item.id, update);
         } catch (error) {
           console.error('Error updating item rotation:', error);
         }

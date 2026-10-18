@@ -32,9 +32,12 @@ export const useObjectsStore = create((set, get) => ({
   setTexts: (texts) => set({ texts }),
 
   // Add a new event
-  addEvent: (event) => set((state) => ({
-    events: [...state.events, event],
-  })),
+  addEvent: (event) => set((state) => {
+    // Check if event already exists to prevent duplicates
+    const exists = state.events.some(e => e.id === event.id);
+    if (exists) return state;
+    return { events: [...state.events, event] };
+  }),
 
   // Update an event
   updateEvent: (eventId, updatedEvent) => set((state) => ({

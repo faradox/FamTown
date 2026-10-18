@@ -1,0 +1,5 @@
+# User uploads are mounted at runtime; never bake them into the image
+uploads/
+__pycache__/
+*.pyc
+.env

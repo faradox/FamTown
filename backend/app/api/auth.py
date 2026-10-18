@@ -2,14 +2,17 @@
 Authentication API endpoints
 """
 
+import time
 import uuid
 import logging
+from collections import defaultdict, deque
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, HTTPException, Depends, status, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, Request, status, UploadFile, File
 from fastapi.responses import FileResponse
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-from sqlalchemy import select
+from sqlalchemy import select, func
 from pathlib import Path
 
 from database import db_manager, User, PasswordResetToken
@@ -23,6 +26,31 @@ from app.services.file_service import file_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+# Failed-login throttling (in-process; the app runs a single worker)
+LOGIN_MAX_FAILURES = 10
+LOGIN_WINDOW_SECONDS = 15 * 60
+_failed_logins: dict[str, deque] = defaultdict(deque)
+
+# Verified against when the email is unknown, so both paths cost one bcrypt check
+_DUMMY_PASSWORD_HASH = hash_password(uuid.uuid4().hex)
+
+
+def _client_ip(request: Request) -> str:
+    # Host nginx sets X-Real-IP; the backend port is only reachable via loopback
+    return request.headers.get("x-real-ip") or (
+        request.client.host if request.client else "unknown"
+    )
+
+
+def _recent_failures(ip: str) -> deque:
+    failures = _failed_logins[ip]
+    cutoff = time.monotonic() - LOGIN_WINDOW_SECONDS
+    while failures and failures[0] < cutoff:
+        failures.popleft()
+    if not failures:
+        del _failed_logins[ip]
+    return failures
 
 
 class LoginRequest(BaseModel):
@@ -56,15 +84,28 @@ class UpdateProfileRequest(BaseModel):
 
 
 @router.post("/login", response_model=LoginResponse)
-async def login(request: LoginRequest):
+async def login(request: LoginRequest, http_request: Request):
     """Login endpoint"""
+    ip = _client_ip(http_request)
+    if len(_recent_failures(ip)) >= LOGIN_MAX_FAILURES:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many failed login attempts. Try again later.",
+        )
+
     async with db_manager.get_session() as session:
         result = await session.execute(
-            select(User).where(User.email == request.email)
+            select(User).where(func.lower(User.email) == request.email.strip().lower())
         )
         user = result.scalar_one_or_none()
-        
-        if not user or not verify_password(request.password, user.passwordHash):
+
+        password_hash = user.passwordHash if user else _DUMMY_PASSWORD_HASH
+        password_ok = await run_in_threadpool(
+            verify_password, request.password, password_hash
+        )
+        if not user or not password_ok:
+            _failed_logins[ip].append(time.monotonic())
+            logger.warning(f"Failed login attempt from {ip}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid username or password"

@@ -140,7 +140,7 @@ async def root():
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     """Global exception handler"""
-    logger.error(f"Unhandled exception: {str(exc)}")
+    logger.exception(f"Unhandled exception: {exc}", exc_info=exc)
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal server error", "message": str(exc) if settings.DEBUG else "An error occurred"}
@@ -160,6 +160,6 @@ if __name__ == "__main__":
         log_level="info",
         loop="asyncio",
     )
-    if str(environment).lower() == "production":
-        uvicorn_kwargs["workers"] = 8
+    if str(environment).lower() == "production" and settings.WORKERS > 1:
+        uvicorn_kwargs["workers"] = settings.WORKERS
     uvicorn.run("main:app", **uvicorn_kwargs) 

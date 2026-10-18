@@ -13,6 +13,7 @@ from sqlalchemy import select, delete
 from database import db_manager, User, Event
 from app.services.auth_service import get_current_user
 from app.services.websocket_service import ws_manager
+from app.services.placement_service import remove_placements, broadcast_placement_removals
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/events", tags=["events"])
@@ -193,8 +194,10 @@ async def delete_event(event_id: str, current_user: User = Depends(get_current_u
         if not event:
             raise HTTPException(status_code=404, detail="Event not found")
         
+        removed = await remove_placements(session, "event", event_id)
         await session.execute(delete(Event).where(Event.id == event_id))
         await session.commit()
+        await broadcast_placement_removals(removed)
         
         # Broadcast to WebSocket clients
         await ws_manager.send_object_deleted("event", event_id)

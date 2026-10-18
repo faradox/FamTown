@@ -220,6 +220,11 @@ const CalendarPage = () => {
                   </div>
                 ))}
 
+                {/* Blank cells so day 1 lands under its weekday */}
+                {Array.from({ length: monthStart.getDay() }, (_, i) => (
+                  <div key={`blank-${i}`} />
+                ))}
+
                 {daysInMonth.map((day) => {
                   const dayEvents = getEventsForDate(day);
                   const isSelected = selectedDate && isSameDay(day, selectedDate);

@@ -349,12 +349,12 @@ const ObjectPicker = ({ isOpen, onClose, title = 'Add to Townsquare', onAdd }) =
           </button>
         </div>
 
-        <div className="flex border-b border-gray-200 dark:border-gray-700">
+        <div className="flex overflow-x-auto border-b border-gray-200 dark:border-gray-700">
           {['event', 'picture', 'file', 'text', 'widget'].map((type) => (
             <button
               key={type}
               onClick={() => setSelectedType(type)}
-              className={`flex-1 px-4 py-3 text-sm font-medium capitalize ${
+              className={`flex-none px-4 py-3 text-sm font-medium capitalize whitespace-nowrap ${
                 selectedType === type
                   ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'

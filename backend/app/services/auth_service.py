@@ -72,9 +72,19 @@ def decode_access_token(token: str) -> Optional[str]:
     except jwt.ExpiredSignatureError:
         logger.warning("JWT token expired")
         return None
-    except jwt.JWTError as e:
+    except jwt.InvalidTokenError as e:
         logger.warning(f"JWT decode error: {e}")
         return None
+
+
+async def get_user_by_token(token: str) -> Optional[User]:
+    """Resolve a JWT to its user, or None if the token or user is invalid"""
+    user_id = decode_access_token(token)
+    if user_id is None:
+        return None
+    async with db_manager.get_session() as session:
+        result = await session.execute(select(User).where(User.id == user_id))
+        return result.scalar_one_or_none()
 
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:
@@ -90,26 +100,14 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     Raises:
         HTTPException: If authentication fails
     """
-    token = credentials.credentials
-    user_id = decode_access_token(token)
-    
-    if user_id is None:
+    user = await get_user_by_token(credentials.credentials)
+
+    if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    async with db_manager.get_session() as session:
-        result = await session.execute(select(User).where(User.id == user_id))
-        user = result.scalar_one_or_none()
-        
-        if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        
-        return user
+
+    return user
 

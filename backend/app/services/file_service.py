@@ -136,7 +136,11 @@ class FileService:
         # Delete existing background for this user/view regardless of extension
         safe_view = view_name.replace("/", "_")
         try:
-            for existing in self.backgrounds_dir.glob(f"{user_id}_{safe_view}.*"):
+            existing_files = [
+                *self.backgrounds_dir.glob(f"{user_id}_{safe_view}.*"),
+                *self.backgrounds_dir.glob(f"{user_id}_{safe_view}-*"),
+            ]
+            for existing in existing_files:
                 try:
                     existing.unlink()
                     logger.info(f"Deleted existing background: {existing.name}")
@@ -154,7 +158,8 @@ class FileService:
             else:
                 file_extension = ".jpg"
 
-        filename = f"{user_id}_{safe_view}{file_extension}"
+        # Unique name per upload: /uploads is cached as immutable by host nginx
+        filename = f"{user_id}_{safe_view}-{uuid.uuid4().hex[:8]}{file_extension}"
         file_path = self.backgrounds_dir / filename
 
         with open(file_path, "wb") as buffer:

@@ -1,6 +1,6 @@
 ## FamTown
 
-FamTown is a family home dashboard. It helps households organize shared calendars, files, notes, photos, and a collaborative townsquare.
+FamTown is a family home dashboard. It helps households organize shared calendars, files, notes, photos, finances, and has a collaborative townsquare that can be decorated
 
 > **Note**: For now, registration is disabled; users must be added added manually.
 

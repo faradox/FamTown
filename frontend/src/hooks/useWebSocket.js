@@ -7,13 +7,22 @@ import { wsService } from '../services/websocket';
 import { useObjectsStore } from '../stores/useObjectsStore';
 import { useTownsquareStore } from '../stores/useTownsquareStore';
 import { useAccountingStore } from '../stores/useAccountingStore';
+import { useProfileStore } from '../stores/useProfileStore';
+import { useAuth } from '../contexts/AuthContext';
 
 export const useWebSocket = () => {
-  const objectsStore = useObjectsStore();
-  const townsquareStore = useTownsquareStore();
-  const accountingStore = useAccountingStore();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      return undefined;
+    }
+
+    // Read stores at event time; subscribing here would re-render the whole app
+    const objectsStore = useObjectsStore.getState();
+    const townsquareStore = useTownsquareStore.getState();
+    const accountingStore = useAccountingStore.getState();
+
     wsService.connect();
 
     const unsubscribeCreated = wsService.on('object_created', ({ objectType, data }) => {
@@ -47,14 +56,23 @@ export const useWebSocket = () => {
       townsquareStore.handleTownsquareUpdated(data);
     });
 
+    const unsubscribeProfile = wsService.on('profile_updated', ({ userId, data }) => {
+      const profileStore = useProfileStore.getState();
+      // Only apply to the profile canvas currently on screen
+      if (profileStore.currentProfileUserId === userId) {
+        profileStore.handleProfileUpdated(data);
+      }
+    });
+
     return () => {
       unsubscribeCreated();
       unsubscribeUpdated();
       unsubscribeDeleted();
       unsubscribeTownsquare();
+      unsubscribeProfile();
       wsService.disconnect();
     };
-  }, []);
+  }, [isAuthenticated]);
 
   return {
     isConnected: wsService.getConnectionStatus(),

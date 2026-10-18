@@ -63,7 +63,9 @@ export const AuthProvider = ({ children }) => {
       console.error('Login error:', error);
       
       let message = 'Login failed. Please try again.';
-      if (error.response?.data?.message) {
+      if (error.response?.data?.detail) {
+        message = error.response.data.detail;
+      } else if (error.response?.data?.message) {
         message = error.response.data.message;
       }
       

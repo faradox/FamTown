@@ -8,6 +8,7 @@ import { entriesAPI, templatesAPI } from '../../services/accountingAPI';
 import { useAccountingStore } from '../../stores/useAccountingStore';
 import CategorySelect from './CategorySelect';
 import toast from 'react-hot-toast';
+import { format } from 'date-fns';
 
 const QuickEntryForm = ({ onEntryCreated }) => {
   const theme = getAppTheme();
@@ -16,7 +17,7 @@ const QuickEntryForm = ({ onEntryCreated }) => {
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [description, setDescription] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { templates, addEntry } = useAccountingStore();
@@ -52,7 +53,7 @@ const QuickEntryForm = ({ onEntryCreated }) => {
       setAmount('');
       setDescription('');
       setCategoryId('');
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(format(new Date(), 'yyyy-MM-dd'));
 
       onEntryCreated?.();
     } catch (error) {

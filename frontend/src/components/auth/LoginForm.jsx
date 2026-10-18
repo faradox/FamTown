@@ -94,7 +94,12 @@ const LoginForm = () => {
     setIsLoading(true);
 
     try {
-      await login(formData);
+      const result = await login(formData);
+      if (!result.success) {
+        // Don't reveal which field is wrong
+        setErrors(prev => ({ ...prev, email: result.message, password: result.message }));
+        return;
+      }
       
       // Redirect to intended page or default to explore
       const from = location.state?.from?.pathname || '/townsquare';

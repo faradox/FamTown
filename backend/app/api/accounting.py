@@ -12,7 +12,7 @@ from decimal import Decimal
 from typing import Optional, List, Literal
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import select, delete, func, and_, or_
+from sqlalchemy import select, delete, update, func, and_, or_
 from sqlalchemy.orm import selectinload, aliased
 
 from database import db_manager, User, AccountingCategory, AccountingEntry, AccountingTemplate
@@ -24,6 +24,9 @@ router = APIRouter(prefix="/api/accounting", tags=["accounting"])
 
 
 # ============ PYDANTIC SCHEMAS ============
+
+# Amount columns are Numeric(12, 2): at most 10 integer digits
+MAX_AMOUNT = Decimal("10000000000")
 
 # Category schemas
 class CategoryCreate(BaseModel):
@@ -66,7 +69,7 @@ class CategoryResponse(BaseModel):
 # Entry schemas
 class EntryCreate(BaseModel):
     entryType: Literal["income", "expense"]
-    amount: Decimal = Field(..., gt=0)
+    amount: Decimal = Field(..., gt=0, lt=MAX_AMOUNT)
     categoryId: str
     description: Optional[str] = Field(None, max_length=500)
     date: date_type
@@ -75,7 +78,7 @@ class EntryCreate(BaseModel):
 
 class EntryUpdate(BaseModel):
     entryType: Optional[Literal["income", "expense"]] = None
-    amount: Optional[Decimal] = Field(None, gt=0)
+    amount: Optional[Decimal] = Field(None, gt=0, lt=MAX_AMOUNT)
     categoryId: Optional[str] = None
     description: Optional[str] = Field(None, max_length=500)
     date: Optional[date_type] = None
@@ -137,7 +140,7 @@ class EntrySummaryResponse(BaseModel):
 class TemplateCreate(BaseModel):
     name: str = Field(..., max_length=100)
     entryType: Literal["income", "expense"]
-    amount: Optional[Decimal] = Field(None, gt=0)
+    amount: Optional[Decimal] = Field(None, gt=0, lt=MAX_AMOUNT)
     categoryId: str
     description: Optional[str] = Field(None, max_length=500)
     sortOrder: int = 0
@@ -146,14 +149,14 @@ class TemplateCreate(BaseModel):
 class TemplateUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=100)
     entryType: Optional[Literal["income", "expense"]] = None
-    amount: Optional[Decimal] = Field(None, gt=0)
+    amount: Optional[Decimal] = Field(None, gt=0, lt=MAX_AMOUNT)
     categoryId: Optional[str] = None
     description: Optional[str] = Field(None, max_length=500)
     sortOrder: Optional[int] = None
 
 
 class TemplateApply(BaseModel):
-    amount: Optional[Decimal] = Field(None, gt=0)
+    amount: Optional[Decimal] = Field(None, gt=0, lt=MAX_AMOUNT)
     date: date_type
     description: Optional[str] = Field(None, max_length=500)
 
@@ -437,8 +440,8 @@ async def list_entries(
                 )
             )
             category_ids = [row[0] for row in result.all()]
-            if category_ids:
-                query = query.where(AccountingEntry.categoryId.in_(category_ids))
+            # Unknown category: in_([]) matches nothing instead of dropping the filter
+            query = query.where(AccountingEntry.categoryId.in_(category_ids))
 
         if fromDate:
             query = query.where(AccountingEntry.date >= fromDate)
@@ -961,6 +964,12 @@ async def delete_template(
         if not template:
             raise HTTPException(status_code=404, detail="Template not found")
 
+        # Detach entries first: tables made by create_all lack ON DELETE SET NULL
+        await session.execute(
+            update(AccountingEntry)
+            .where(AccountingEntry.templateId == template_id)
+            .values(templateId=None)
+        )
         await session.execute(
             delete(AccountingTemplate).where(AccountingTemplate.id == template_id)
         )

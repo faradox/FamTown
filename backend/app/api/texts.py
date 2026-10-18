@@ -12,6 +12,7 @@ from sqlalchemy import select, delete
 from database import db_manager, User, Text
 from app.services.auth_service import get_current_user
 from app.services.websocket_service import ws_manager
+from app.services.placement_service import remove_placements, broadcast_placement_removals
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/texts", tags=["texts"])
@@ -174,8 +175,10 @@ async def delete_text(text_id: str, current_user: User = Depends(get_current_use
         if not text:
             raise HTTPException(status_code=404, detail="Text not found")
         
+        removed = await remove_placements(session, "text", text_id)
         await session.execute(delete(Text).where(Text.id == text_id))
         await session.commit()
+        await broadcast_placement_removals(removed)
         
         # Broadcast to WebSocket clients
         await ws_manager.send_object_deleted("text", text_id)

@@ -14,6 +14,7 @@ from database import db_manager, User, File
 from app.services.auth_service import get_current_user
 from app.services.file_service import file_service
 from app.services.websocket_service import ws_manager
+from app.services.placement_service import remove_placements, broadcast_placement_removals
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/files", tags=["files"])
@@ -194,8 +195,10 @@ async def delete_file(file_id: str, current_user: User = Depends(get_current_use
         file_service.delete_file(file_obj.path)
         
         # Delete from database
+        removed = await remove_placements(session, "file", file_id)
         await session.execute(delete(File).where(File.id == file_id))
         await session.commit()
+        await broadcast_placement_removals(removed)
         
         # Broadcast to WebSocket clients
         await ws_manager.send_object_deleted("file", file_id)

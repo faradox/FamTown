@@ -2,6 +2,8 @@
  * WebSocket service for real-time updates
  */
 
+import { authStorage } from './authStorage';
+
 const WS_BASE_URL = import.meta.env.VITE_WS_URL !== undefined
   ? import.meta.env.VITE_WS_URL
   : 'ws://localhost:8000';
@@ -10,39 +12,63 @@ class WebSocketService {
   constructor() {
     this.socket = null;
     this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
     this.reconnectDelay = 2000;
+    this.maxReconnectDelay = 30000;
+    // Keepalive below the host nginx proxy_read_timeout (60s)
+    this.pingInterval = 25000;
+    this.pingTimer = null;
+    this.reconnectTimer = null;
+    this.shouldReconnect = false;
     this.listeners = new Map();
     this.isConnected = false;
   }
 
-  connect() {
-    if (this.socket?.readyState === WebSocket.OPEN) {
+  async connect() {
+    this.shouldReconnect = true;
+    if (
+      this.socket?.readyState === WebSocket.OPEN ||
+      this.socket?.readyState === WebSocket.CONNECTING
+    ) {
+      return;
+    }
+
+    const token = await authStorage.getToken();
+    if (!token || !this.shouldReconnect) {
       return;
     }
 
     try {
-      this.socket = new WebSocket(`${WS_BASE_URL}/ws`);
+      const socket = new WebSocket(`${WS_BASE_URL}/ws`);
+      this.socket = socket;
 
-      this.socket.onopen = () => {
-        console.log('WebSocket connected');
-        this.isConnected = true;
-        this.reconnectAttempts = 0;
-        this.notifyListeners('connected', true);
+      socket.onopen = () => {
+        // The server only registers us for broadcasts after this message
+        socket.send(JSON.stringify({ type: 'auth', token }));
       };
 
-      this.socket.onclose = () => {
+      socket.onclose = (event) => {
+        if (this.socket !== socket) {
+          return;
+        }
         console.log('WebSocket disconnected');
+        this.socket = null;
         this.isConnected = false;
+        this.stopPing();
         this.notifyListeners('connected', false);
-        this.attemptReconnect();
+        // 1008: token rejected; the REST 401 handler takes care of re-login
+        if (event.code !== 1008) {
+          this.attemptReconnect();
+        }
       };
 
-      this.socket.onerror = (error) => {
+      socket.onerror = (error) => {
         console.error('WebSocket error:', error);
       };
 
-      this.socket.onmessage = (event) => {
+      socket.onmessage = (event) => {
+        if (event.data === 'pong') {
+          return;
+        }
         try {
           const message = JSON.parse(event.data);
           this.handleMessage(message);
@@ -57,30 +83,60 @@ class WebSocketService {
   }
 
   disconnect() {
+    this.shouldReconnect = false;
+    clearTimeout(this.reconnectTimer);
+    this.stopPing();
     if (this.socket) {
-      this.socket.close();
+      const socket = this.socket;
       this.socket = null;
+      this.isConnected = false;
+      socket.close();
     }
   }
 
+  startPing() {
+    this.stopPing();
+    this.pingTimer = setInterval(() => {
+      if (this.socket?.readyState === WebSocket.OPEN) {
+        this.socket.send('ping');
+      }
+    }, this.pingInterval);
+  }
+
+  stopPing() {
+    clearInterval(this.pingTimer);
+    this.pingTimer = null;
+  }
+
   attemptReconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnect attempts reached');
+    if (!this.shouldReconnect) {
       return;
     }
 
     this.reconnectAttempts++;
-    console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+    const delay = Math.min(
+      this.reconnectDelay * this.reconnectAttempts,
+      this.maxReconnectDelay
+    );
+    console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})...`);
 
-    setTimeout(() => {
+    clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = setTimeout(() => {
       this.connect();
-    }, this.reconnectDelay * this.reconnectAttempts);
+    }, delay);
   }
 
   handleMessage(message) {
-    const { type, objectType, data, objectId } = message;
+    const { type, objectType, data, objectId, userId } = message;
 
     switch (type) {
+      case 'auth_ok':
+        console.log('WebSocket connected');
+        this.isConnected = true;
+        this.reconnectAttempts = 0;
+        this.startPing();
+        this.notifyListeners('connected', true);
+        break;
       case 'object_created':
         this.notifyListeners('object_created', { objectType, data });
         break;
@@ -92,6 +148,9 @@ class WebSocketService {
         break;
       case 'townsquare_updated':
         this.notifyListeners('townsquare_updated', data);
+        break;
+      case 'profile_updated':
+        this.notifyListeners('profile_updated', { userId, data });
         break;
       default:
         console.warn('Unknown message type:', type);

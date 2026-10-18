@@ -31,7 +31,8 @@ services:
     container_name: famtown-frontend
     restart: unless-stopped
     ports:
-      - "8069:80"
+      # Loopback only: host nginx terminates TLS and proxies here
+      - "127.0.0.1:8069:80"
     environment:
       - VITE_API_URL=${FAMTOWN_API_URL:-}
       - VITE_WS_URL=${FAMTOWN_WS_URL:-}
@@ -89,11 +90,12 @@ services:
     container_name: famtown-backend
     restart: unless-stopped
     ports:
-      - "8001:8000"
+      # Loopback only: host nginx terminates TLS and proxies here
+      - "127.0.0.1:8001:8000"
     environment:
       <<: [*all, *prod]
     volumes:
-      - ./backend/uploads:/app/uploads
+      - ${FAMTOWN_UPLOADS_DIR:-./backend/uploads}:/app/uploads
     networks:
       breathnet:
         ipv4_address: 172.29.3.2
@@ -115,7 +117,7 @@ services:
       <<: [*all, *dev]
     volumes:
       - ./backend:/app
-      - ./backend/uploads:/app/uploads
+      - ${FAMTOWN_UPLOADS_DIR:-./backend/uploads}:/app/uploads
     command: python main.py
     networks:
       breathnet:
