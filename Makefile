@@ -5,18 +5,22 @@ all: help
 uid := $(shell id -u)
 gid := $(shell id -g)
 
+# Optional untracked local overrides (e.g. DATA_DIR, PROD_PROFILES); env vars win
+-include local.mk
+
 # Project configuration
 PROJECT_NAME := famtown
-DOCKER_NETWORK_NAME ?= breathnet
-DATA_DIR ?= $(HOME)/breathdance-data/famtown
+DATA_DIR ?= $(CURDIR)/data
 UPLOADS_DIR ?= $(DATA_DIR)/uploads
 export FAMTOWN_UPLOADS_DIR ?= $(UPLOADS_DIR)
+# Compose profiles for production; localdb adds the bundled PostgreSQL.
+# Use PROD_PROFILES=prod when FAMTOWN_DATABASE_URL points at another database.
+PROD_PROFILES ?= prod localdb
+PROD_PROFILE_FLAGS = $(foreach p,$(PROD_PROFILES),--profile $(p))
 
 # Setup targets
 init:
 	@echo "Initializing FamTown project..."
-	@echo "Ensuring Docker network exists: $(DOCKER_NETWORK_NAME)"
-	@docker network inspect $(DOCKER_NETWORK_NAME) >/dev/null 2>&1 || docker network create $(DOCKER_NETWORK_NAME)
 	@echo "Ensuring upload storage exists: $(FAMTOWN_UPLOADS_DIR)"
 	@mkdir -p "$(FAMTOWN_UPLOADS_DIR)"
 	@$(MAKE) migrate-uploads
@@ -44,7 +48,7 @@ build-dev:
 build:
 	$(MAKE) init
 	@echo "Building production images..."
-	uid=$(uid) gid=$(gid) docker compose -p $(PROJECT_NAME) --profile prod build
+	uid=$(uid) gid=$(gid) docker compose -p $(PROJECT_NAME) $(PROD_PROFILE_FLAGS) build
 
 build-frontend:
 	@echo "Building frontend image..."
@@ -64,7 +68,7 @@ logs-backend:
 	@docker logs famtown-backend
 
 logs-postgres:
-	@docker logs postgres
+	@docker logs famtown-postgres
 
 logs-build:
 	@docker logs --tail=100 famtown-frontend && docker logs --tail=100 famtown-backend
@@ -102,13 +106,13 @@ run:
         echo "Production images not found. Building..."; \
         $(MAKE) build; \
     fi
-	docker compose -p $(PROJECT_NAME) --profile prod up -d
+	docker compose -p $(PROJECT_NAME) $(PROD_PROFILE_FLAGS) up -d
 
 run-detached:
 	@echo "Starting FamTown in production mode (detached)..."
 	$(MAKE) init
 	$(MAKE) stop
-	docker compose -p $(PROJECT_NAME) --profile prod up -d
+	docker compose -p $(PROJECT_NAME) $(PROD_PROFILE_FLAGS) up -d
 
 run-frontend:
 	@echo "Starting frontend only..."
@@ -122,7 +126,7 @@ run-backend:
 stop:
 	@echo "Stopping FamTown services..."
 	docker compose -p $(PROJECT_NAME) --profile dev down 2>/dev/null || true
-	docker compose -p $(PROJECT_NAME) --profile prod down 2>/dev/null || true
+	docker compose -p $(PROJECT_NAME) $(PROD_PROFILE_FLAGS) down 2>/dev/null || true
 	@echo "All services stopped"
 
 clean:
@@ -156,7 +160,7 @@ help:
 	@echo '================================'
 	@echo ''
 	@echo 'Setup Commands:'
-	@echo '  init                 - Initialize project and create Docker network'
+	@echo '  init                 - Initialize project and create upload storage'
 	@echo '  setup                - Full production setup (init + build)'
 	@echo '  setup-dev            - Full development setup (init + build-dev)'
 	@echo ''

@@ -97,3 +97,10 @@ coverage/
 
 # My custom theme
 frontend/src/themes/community/nawlistan.theme.js
+
+# Local data (uploads) when DATA_DIR is left at its default
+data/
+
+# Untracked local config (server wiring)
+docker-compose.override.yml
+local.mk

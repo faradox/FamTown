@@ -51,7 +51,7 @@ famtown/
 
 ### DevOps
 - **Containers:** Docker Compose with `dev` and `prod` profiles
-- **Network:** External `breathnet` Docker network (shared with other services)
+- **Network:** Default Compose network; bundled PostgreSQL in the `dev` and `localdb` profiles
 - **Proxy:** nginx with WebSocket support
 
 ## Development Commands

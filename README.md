@@ -15,13 +15,11 @@ make run-dev
 
 If you are not using `make`, run:
 ```bash
-docker network inspect "${DOCKER_NETWORK_NAME:-breathnet}" >/dev/null 2>&1 || \
-  docker network create "${DOCKER_NETWORK_NAME:-breathnet}"
 docker compose -p famtown --profile dev build
 docker compose -p famtown --profile dev up
 ```
 
-Available at: Frontend `http://localhost:3000`, Backend API `http://localhost:8000`, API Docs `http://localhost:8000/docs`.
+The dev profile includes its own PostgreSQL (PostGIS) container. Available at: Frontend `http://localhost:3000`, Backend API `http://localhost:8000`, API Docs `http://localhost:8000/docs`.
 
 ### Production (Docker only)
 ```bash
@@ -32,13 +30,16 @@ make run
 
 If you are not using `make`, run:
 ```bash
-docker network inspect "${DOCKER_NETWORK_NAME:-breathnet}" >/dev/null 2>&1 || \
-  docker network create "${DOCKER_NETWORK_NAME:-breathnet}"
-docker compose -p famtown --profile prod build
-docker compose -p famtown --profile prod up -d
+docker compose -p famtown --profile prod --profile localdb build
+docker compose -p famtown --profile prod --profile localdb up -d
 ```
 
+The `localdb` profile starts the bundled PostgreSQL. To use your own database instead, set
+`FAMTOWN_DATABASE_URL` and run `make run PROD_PROFILES=prod` (or drop `--profile localdb`).
+With `make`, uploads are stored in `./data/uploads` (set `DATA_DIR` or `FAMTOWN_UPLOADS_DIR` to move them).
+
 Production ports (from `docker-compose.yml`): Frontend `http://localhost:8069`, Backend API `http://localhost:8001`.
+Both bind to `127.0.0.1` only; put a reverse proxy (e.g. nginx) in front for TLS.
 
 ### Create Users
 ```bash
@@ -52,19 +53,22 @@ Open `http://localhost:3000` and log in with the credentials above. In productio
 ## Environment Variables
 
 Set variables in your shell before running `make` or `docker compose`. The Docker Compose file maps
-`FAMTOWN_*` variables into the backend and frontend containers.
+`FAMTOWN_*` variables into the backend and frontend containers. Makefile variables can also go in an
+untracked `local.mk`, and Compose additions (extra networks etc.) in an untracked
+`docker-compose.override.yml`, which Docker Compose loads automatically.
 
-Required for local/dev:
-- `FAMTOWN_DATABASE_URL` - PostgreSQL connection string used by backend
-- `FAMTOWN_JWT_SECRET_KEY` - Min 32 chars (required in production)
+Required in production:
+- `FAMTOWN_JWT_SECRET_KEY` - Min 32 chars; the prod backend refuses to start with the built-in dev key
 
 Optional:
+- `FAMTOWN_DATABASE_URL` - PostgreSQL connection string (defaults to the bundled `postgres` service)
+- `DATA_DIR` / `FAMTOWN_UPLOADS_DIR` - Host upload storage (Makefile default `./data/uploads`)
+- `PROD_PROFILES` - Compose profiles for `make build`/`run` (default `prod localdb`)
 - `GEMINI_API_KEY` - Enables AI image generation widget
 - `FAMTOWN_FRONTEND_URL` - CORS origin (defaults to `http://localhost:3000`)
 - `FAMTOWN_API_URL` - Frontend API base (defaults to dev backend)
 - `FAMTOWN_WS_URL` - Frontend WebSocket base (defaults to dev backend)
 - `FAMTOWN_UI_THEME`, `FAMTOWN_APP_NAME`, `FAMTOWN_APP_SHORT_NAME`, `FAMTOWN_APP_DESCRIPTION`, `FAMTOWN_AUTH_TOKEN_KEY`
-- `DOCKER_NETWORK_NAME` - External network name (default `breathnet`)
 
 AI image generation is disabled when `GEMINI_API_KEY` is not set.
 
